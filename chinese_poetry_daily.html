@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>每日一首 — 中文詩歌</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#eab308;--muted:#9aa4b2}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans CJK TC',PingFang TC,'Hiragino Sans GB',
+      'Microsoft JhengHei',sans-serif;background:linear-gradient(180deg,#041021 0%, #071428 100%);color:#e6eef6}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:36px}
+    .card{width:100%;max-width:720px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:28px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    h1{margin:0 0 6px;font-size:20px}
+    .meta{color:var(--muted);font-size:13px;margin-bottom:18px}
+    .poem-title{font-size:18px;margin:6px 0}
+    .poem-author{color:var(--muted);font-size:13px;margin-bottom:14px}
+    .poem-text{font-size:20px;line-height:1.9;white-space:pre-wrap;margin-bottom:20px}
+    .controls{display:flex;gap:8px}
+    button{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:inherit;cursor:pointer}
+    button.secondary{border-color:rgba(255,255,255,0.03);color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .small{font-size:13px;color:var(--muted)}
+    @media (max-width:480px){.poem-text{font-size:18px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="card" role="main">
+      <h1>每日一首 • 中文詩歌</h1>
+      <div class="meta">自動為你挑選「每天的」隨機詩作 — 每日相同，隔日改變。</div>
+
+      <div id="poem">
+        <div class="poem-title" id="title">載入中…</div>
+        <div class="poem-author" id="author"></div>
+        <div class="poem-text" id="text"></div>
+      </div>
+
+      <div class="controls">
+        <button id="tempRandom">換一首（暫時）</button>
+        <button id="copy" class="secondary">複製詩文</button>
+        <button id="download" class="secondary">下載 .txt</button>
+      </div>
+
+      <footer>
+        <div id="date" class="small"></div>
+        <div class="small" style="margin-top:6px">要新增詩歌：在 <code>poems</code> 陣列中加入物件 {title, author, text}。</div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // 範例詩歌清單：換成你喜歡的詩即可
+    const poems = [
+      {title: '靜夜思', author: '李白', text: '床前明月光，疑是地上霜。\n舉頭望明月，低頭思故鄉。'},
+      {title: '春曉', author: '孟浩然', text: '春眠不覺曉，處處聞啼鳥。\n夜來風雨聲，花落知多少。'},
+      {title: '登鹳雀樓', author: '王之涣', text: '白日依山盡，黃河入海流。\n欲窮千里目，更上一層樓。'},
+      {title: '送元二使安西', author: '王維', text: '渭城朝雨浥輕塵，客舍青青柳色新。\n勸君更盡一杯酒，西出陽關無故人。'},
+      {title: '黃鶴樓送孟浩然之廣陵', author: '李白', text: '故人西辭黃鶴樓，煙花三月下揚州。\n孤帆遠影碧空盡，唯見長江天際流。'},
+      {title: '贈汪倫', author: '李白', text: '李白乘舟將欲行，忽聞岸上踏歌聲。\n桃花潭水深千尺，不及汪倫送我情。'},
+      {title: '鹿柴', author: '王維', text: '空山不見人，但聞人語響。\n返景入深林，復照青苔上。'},
+      {title: '夜泊牛渚懷古', author: '杜牧', text: '牛渚西江夜，青天無片雲。\n登舟望秋月，空憶謝將軍。'},
+      {title: '江南春', author: '杜牧', text: '千里鶯啼綠映紅，水村山郭酒旗風。\n南朝四百八十寺，多少樓臺煙雨中。'},
+      {title: '山行', author: '杜牧', text: '遠上寒山石徑斜，白雲生處有人家。\n停車坐愛楓林晚，霜葉紅於二月花。'}
+    ];
+
+    function dateStrFor(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function hashString(s){
+      // 一個簡單的字元雜湊，穩定且跨瀏覽器
+      let h = 2166136261 >>> 0;
+      for(let i=0;i<s.length;i++){
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+      }
+      return h;
+    }
+
+    function indexForDate(d){
+      return Math.abs(hashString(dateStrFor(d))) % poems.length;
+    }
+
+    function showPoem(p){
+      document.getElementById('title').textContent = p.title;
+      document.getElementById('author').textContent = p.author;
+      document.getElementById('text').textContent = p.text;
+    }
+
+    function showToday(){
+      const today = new Date();
+      const index = indexForDate(today);
+      const poem = poems[index];
+      showPoem(poem);
+      document.getElementById('date').textContent = `日期：${dateStrFor(today)}  （詩歌編號：${index}）`;
+    }
+
+    function showTempRandom(){
+      const idx = Math.floor(Math.random()*poems.length);
+      showPoem(poems[idx]);
+      document.getElementById('date').textContent = `臨時隨機（非今日推薦） — 詩歌編號：${idx}`;
+    }
+
+    document.getElementById('tempRandom').addEventListener('click', showTempRandom);
+
+    document.getElementById('copy').addEventListener('click', async ()=>{
+      const title = document.getElementById('title').textContent;
+      const author = document.getElementById('author').textContent;
+      const text = document.getElementById('text').textContent;
+      const payload = `${title} — ${author}\n\n${text}`;
+      try{ await navigator.clipboard.writeText(payload); alert('已複製到剪貼簿'); }catch(e){ alert('複製失敗：'+e); }
+    });
+
+    document.getElementById('download').addEventListener('click', ()=>{
+      const title = document.getElementById('title').textContent;
+      const author = document.getElementById('author').textContent;
+      const text = document.getElementById('text').textContent;
+      const payload = `${title} — ${author}\n\n${text}`;
+      const blob = new Blob([payload],{type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${title.replace(/\s/g,'_')}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // 首次顯示：今日的推薦（同一天會固定）
+    showToday();
+
+    // OPTIONAL: 若你想每天自動更新（例如使用 Single Page App），可以偵測本地日期改變。
+  </script>
+</body>
+</html>
